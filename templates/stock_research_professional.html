@@ -1,0 +1,1544 @@
+{% extends "layout.html" %} {% block title %}Stock Research - Portfolio
+Analyzer{% endblock %} {% block head %}
+<style>
+    .chart-container {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        min-height: 1050px;
+    }
+
+    .dark-mode .chart-container {
+        background: #2d3748;
+        color: #e2e8f0;
+    }
+
+    .stock-info-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+
+    .metric-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+        border: 1px solid #e9ecef;
+    }
+
+    .dark-mode .metric-card {
+        background: #4a5568;
+        border-color: #718096;
+        color: #e2e8f0;
+    }
+
+    .time-buttons {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 0.5rem;
+        display: inline-flex;
+        gap: 0.25rem;
+    }
+
+    .dark-mode .time-buttons {
+        background: #4a5568;
+    }
+
+    .time-btn {
+        border: none;
+        background: transparent;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        color: #6c757d;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .time-btn:hover {
+        background: #e9ecef;
+        color: #495057;
+    }
+
+    .time-btn.active {
+        background: #007bff;
+        color: white;
+    }
+
+    .dark-mode .time-btn:hover {
+        background: #718096;
+        color: #e2e8f0;
+    }
+
+    .chart-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 650px;
+        font-size: 1.1rem;
+        color: #6c757d;
+    }
+
+    .stock-search-container {
+        position: relative;
+    }
+
+    .search-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+
+    .dark-mode .search-suggestions {
+        background: #4a5568;
+        border-color: #718096;
+        color: #e2e8f0;
+    }
+
+    .suggestion-item {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background-color 0.2s;
+    }
+
+    .suggestion-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .dark-mode .suggestion-item:hover {
+        background-color: #718096;
+    }
+
+    .popular-stocks {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .stock-chip {
+        background: #e9ecef;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        color: #495057;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .stock-chip:hover {
+        background: #007bff;
+        color: white;
+    }
+
+    .dark-mode .stock-chip {
+        background: #4a5568;
+        color: #e2e8f0;
+    }
+</style>
+{% endblock %} {% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h1 class="display-4 fw-bold text-primary mb-3">
+                <i class="fas fa-chart-candlestick me-3"></i>Professional Stock
+                Research
+            </h1>
+            <p class="lead text-muted">
+                Advanced trading charts with real-time OHLC data and technical
+                indicators
+            </p>
+        </div>
+    </div>
+
+    <!-- Stock Search -->
+    <div class="row mb-4">
+        <div class="col-lg-10 mx-auto">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="stock-search-container">
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="stockSearchInput"
+                                placeholder="Search stocks (e.g., RELIANCE, TCS, INFY, HDFC)"
+                                autocomplete="off"
+                            />
+                            <button
+                                class="btn btn-primary"
+                                type="button"
+                                id="searchButton"
+                            >
+                                <i class="fas fa-chart-line me-2"></i>Research
+                            </button>
+                        </div>
+                        <div
+                            id="searchSuggestions"
+                            class="search-suggestions"
+                        ></div>
+                    </div>
+
+                    <!-- Popular Stocks -->
+                    <div class="popular-stocks">
+                        <small class="text-muted me-2 align-self-center"
+                            >Popular:</small
+                        >
+                        <button class="stock-chip" data-symbol="RELIANCE.NS">
+                            RELIANCE
+                        </button>
+                        <button class="stock-chip" data-symbol="TCS.NS">
+                            TCS
+                        </button>
+                        <button class="stock-chip" data-symbol="HDFCBANK.NS">
+                            HDFC Bank
+                        </button>
+                        <button class="stock-chip" data-symbol="INFY.NS">
+                            Infosys
+                        </button>
+                        <button class="stock-chip" data-symbol="ITC.NS">
+                            ITC
+                        </button>
+                        <button class="stock-chip" data-symbol="SBIN.NS">
+                            SBI
+                        </button>
+                        <button class="stock-chip" data-symbol="BAJFINANCE.NS">
+                            Bajaj Finance
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Data Display -->
+    <div id="stockDataSection" style="display: none">
+        <!-- Stock Information Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="stock-info-card">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h2 id="stockName" class="mb-1">-</h2>
+                            <p id="stockSymbol" class="mb-0 opacity-75">-</p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <h3 id="stockPrice" class="mb-1">₹-</h3>
+                            <p id="stockChange" class="mb-0">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="row mb-4">
+            <div class="col-md-3 col-6 mb-3">
+                <div class="metric-card">
+                    <h6 class="text-muted small mb-1">Market Cap</h6>
+                    <div id="marketCap" class="fw-bold">-</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-3">
+                <div class="metric-card">
+                    <h6 class="text-muted small mb-1">P/E Ratio</h6>
+                    <div id="peRatio" class="fw-bold">-</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-3">
+                <div class="metric-card">
+                    <h6 class="text-muted small mb-1">52W High</h6>
+                    <div id="yearHigh" class="fw-bold">-</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-3">
+                <div class="metric-card">
+                    <h6 class="text-muted small mb-1">52W Low</h6>
+                    <div id="yearLow" class="fw-bold">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="row">
+            <div class="col-12">
+                <div class="chart-container">
+                    <div class="p-3 border-bottom">
+                        <div
+                            class="d-flex justify-content-between align-items-center flex-wrap gap-3"
+                        >
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-candlestick me-2"></i
+                                >Price Chart
+                            </h5>
+
+                            <!-- Time Period Buttons -->
+                            <div class="time-buttons">
+                                <button class="time-btn" data-period="1d">
+                                    1D
+                                </button>
+                                <button
+                                    class="time-btn active"
+                                    data-period="5d"
+                                >
+                                    5D
+                                </button>
+                                <button class="time-btn" data-period="1mo">
+                                    1M
+                                </button>
+                                <button class="time-btn" data-period="3mo">
+                                    3M
+                                </button>
+                                <button class="time-btn" data-period="1y">
+                                    1Y
+                                </button>
+                                <button class="time-btn" data-period="2y">
+                                    2Y
+                                </button>
+                                <button class="time-btn" data-period="5y">
+                                    5Y
+                                </button>
+                                <button class="time-btn" data-period="10y">
+                                    10Y
+                                </button>
+                            </div>
+
+                            <!-- Chart Controls -->
+                            <div class="d-flex gap-2 align-items-center">
+                                <!-- Chart Type Selector -->
+                                <div class="time-buttons">
+                                    <button
+                                        class="time-btn active"
+                                        data-chart-type="candlestick"
+                                        title="Candlestick"
+                                    >
+                                        <i class="fas fa-chart-bar"></i>
+                                    </button>
+                                    <button
+                                        class="time-btn"
+                                        data-chart-type="line"
+                                        title="Line Chart"
+                                    >
+                                        <i class="fas fa-chart-line"></i>
+                                    </button>
+                                    <button
+                                        class="time-btn"
+                                        data-chart-type="area"
+                                        title="Area Chart"
+                                    >
+                                        <i class="fas fa-chart-area"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Chart Options -->
+                                <div class="time-buttons">
+                                    <button
+                                        class="time-btn active"
+                                        id="showVolume"
+                                        title="Show Volume Chart"
+                                        data-toggle="true"
+                                    >
+                                        <i class="fas fa-chart-column"></i>
+                                        Volume
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart Container -->
+                    <div id="chartContainer">
+                        <div class="chart-loading">
+                            <div class="text-center">
+                                <div
+                                    class="spinner-border text-primary me-3"
+                                    role="status"
+                                ></div>
+                                Loading professional trading chart...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics Section -->
+        <div class="row mt-2" id="keyMetricsSection" style="display: none">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>Key Metrics
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center" id="keyMetricsContent">
+                            <div class="col-md-2">
+                                <div class="metric-item">
+                                    <div class="metric-label text-muted small">
+                                        TTM PE Ratio
+                                    </div>
+                                    <div class="metric-value h5 fw-bold">
+                                        101.22
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="metric-item">
+                                    <div class="metric-label text-muted small">
+                                        PB Ratio
+                                    </div>
+                                    <div class="metric-value h5 fw-bold">
+                                        1.06
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="metric-item">
+                                    <div class="metric-label text-muted small">
+                                        Dividend Yield
+                                    </div>
+                                    <div class="metric-value h5 fw-bold">
+                                        1.18%
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="metric-item">
+                                    <div class="metric-label text-muted small">
+                                        Sector PE
+                                    </div>
+                                    <div class="metric-value h5 fw-bold">
+                                        28.00
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="metric-item">
+                                    <div class="metric-label text-muted small">
+                                        Sector PB
+                                    </div>
+                                    <div class="metric-value h5 fw-bold">
+                                        3.53
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="metric-item">
+                                    <div class="metric-label text-muted small">
+                                        Sector Div Yld
+                                    </div>
+                                    <div class="metric-value h5 fw-bold">
+                                        1.57%
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shareholding Pattern Section -->
+        <div class="row mt-2" id="shareholdingSection" style="display: none">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div
+                        class="card-header bg-light d-flex justify-content-between align-items-center"
+                    >
+                        <h5 class="mb-0">
+                            <i class="fas fa-users me-2"></i>Shareholding
+                            Pattern
+                        </h5>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button
+                                type="button"
+                                class="btn btn-outline-secondary shareholding-btn"
+                                data-quarter="jun2024"
+                            >
+                                Jun 2024
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-outline-secondary shareholding-btn"
+                                data-quarter="sep2024"
+                            >
+                                Sep 2024
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-outline-secondary shareholding-btn"
+                                data-quarter="dec2024"
+                            >
+                                Dec 2024
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-secondary shareholding-btn"
+                                data-quarter="mar2025"
+                            >
+                                Mar 2025
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="shareholdingContent">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div
+                                        class="shareholding-item d-flex justify-content-between align-items-center py-2"
+                                    >
+                                        <div class="d-flex align-items-center">
+                                            <div
+                                                class="shareholding-bar bg-primary me-3"
+                                                style="
+                                                    width: 80px;
+                                                    height: 20px;
+                                                    border-radius: 3px;
+                                                "
+                                            ></div>
+                                            <span>Total Promoter Holding</span>
+                                        </div>
+                                        <strong>37.98%</strong>
+                                    </div>
+                                    <div
+                                        class="shareholding-item d-flex justify-content-between align-items-center py-2"
+                                    >
+                                        <div class="d-flex align-items-center">
+                                            <div
+                                                class="shareholding-bar bg-info me-3"
+                                                style="
+                                                    width: 20px;
+                                                    height: 20px;
+                                                    border-radius: 3px;
+                                                "
+                                            ></div>
+                                            <span>Mutual Funds</span>
+                                        </div>
+                                        <strong>9.15%</strong>
+                                    </div>
+                                    <div
+                                        class="shareholding-item d-flex justify-content-between align-items-center py-2"
+                                    >
+                                        <div class="d-flex align-items-center">
+                                            <div
+                                                class="shareholding-bar bg-warning me-3"
+                                                style="
+                                                    width: 25px;
+                                                    height: 20px;
+                                                    border-radius: 3px;
+                                                "
+                                            ></div>
+                                            <span
+                                                >Other Domestic
+                                                Institutions</span
+                                            >
+                                        </div>
+                                        <strong>12.82%</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div
+                                        class="shareholding-item d-flex justify-content-between align-items-center py-2"
+                                    >
+                                        <div class="d-flex align-items-center">
+                                            <div
+                                                class="shareholding-bar bg-success me-3"
+                                                style="
+                                                    width: 30px;
+                                                    height: 20px;
+                                                    border-radius: 3px;
+                                                "
+                                            ></div>
+                                            <span>Foreign Institutions</span>
+                                        </div>
+                                        <strong>13.30%</strong>
+                                    </div>
+                                    <div
+                                        class="shareholding-item d-flex justify-content-between align-items-center py-2"
+                                    >
+                                        <div class="d-flex align-items-center">
+                                            <div
+                                                class="shareholding-bar bg-secondary me-3"
+                                                style="
+                                                    width: 50px;
+                                                    height: 20px;
+                                                    border-radius: 3px;
+                                                "
+                                            ></div>
+                                            <span>Retail and Others</span>
+                                        </div>
+                                        <strong>26.76%</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ApexCharts Library -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+<script>
+    let currentChart = null;
+    let currentSymbol = "";
+    let currentPeriod = "5d";
+    let currentChartType = "candlestick";
+    let chartData = {};
+
+    // Initialize the page
+    document.addEventListener("DOMContentLoaded", function () {
+        initializeStockSearch();
+        initializeEventListeners();
+    });
+
+    function initializeStockSearch() {
+        const searchInput = document.getElementById("stockSearchInput");
+        const searchButton = document.getElementById("searchButton");
+        const suggestionsDiv = document.getElementById("searchSuggestions");
+
+        let searchTimeout;
+
+        searchInput.addEventListener("input", function () {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+
+            if (query.length < 2) {
+                suggestionsDiv.style.display = "none";
+                return;
+            }
+
+            searchTimeout = setTimeout(() => {
+                fetchSearchSuggestions(query);
+            }, 300);
+        });
+
+        searchButton.addEventListener("click", function () {
+            const symbol = searchInput.value.trim().toUpperCase();
+            if (symbol) {
+                loadStockData(symbol);
+            }
+        });
+
+        searchInput.addEventListener("keypress", function (e) {
+            if (e.key === "Enter") {
+                const symbol = this.value.trim().toUpperCase();
+                if (symbol) {
+                    loadStockData(symbol);
+                }
+            }
+        });
+
+        // Popular stock chips
+        document.querySelectorAll(".stock-chip").forEach((chip) => {
+            chip.addEventListener("click", function () {
+                const symbol = this.dataset.symbol;
+                searchInput.value = symbol;
+                loadStockData(symbol);
+            });
+        });
+    }
+
+    function initializeEventListeners() {
+        // Time period buttons
+        document.querySelectorAll(".time-btn[data-period]").forEach((btn) => {
+            btn.addEventListener("click", function () {
+                document
+                    .querySelectorAll(".time-btn[data-period]")
+                    .forEach((b) => b.classList.remove("active"));
+                this.classList.add("active");
+                currentPeriod = this.dataset.period;
+                if (currentSymbol) {
+                    loadChartData(currentSymbol, currentPeriod);
+                }
+            });
+        });
+
+        // Chart type buttons
+        document
+            .querySelectorAll(".time-btn[data-chart-type]")
+            .forEach((btn) => {
+                btn.addEventListener("click", function () {
+                    document
+                        .querySelectorAll(".time-btn[data-chart-type]")
+                        .forEach((b) => b.classList.remove("active"));
+                    this.classList.add("active");
+                    currentChartType = this.dataset.chartType;
+                    if (currentSymbol && chartData[currentPeriod]) {
+                        createProfessionalChart(chartData[currentPeriod]);
+                    }
+                });
+            });
+
+        // Volume toggle button
+        document
+            .getElementById("showVolume")
+            .addEventListener("click", function () {
+                const isActive = this.classList.contains("active");
+                const volumeChart = document.getElementById("volumeChart");
+
+                if (isActive) {
+                    this.classList.remove("active");
+                    this.setAttribute("data-toggle", "false");
+                    if (volumeChart) volumeChart.style.display = "none";
+                } else {
+                    this.classList.add("active");
+                    this.setAttribute("data-toggle", "true");
+                    if (volumeChart) volumeChart.style.display = "block";
+                }
+
+                // Reload chart with updated volume
+                if (currentSymbol && chartData[currentPeriod]) {
+                    createProfessionalChart(chartData[currentPeriod]);
+                }
+            });
+
+        // Initialize volume button as active
+        document.getElementById("showVolume").classList.add("active");
+
+        // Shareholding pattern button functionality
+        document.querySelectorAll(".shareholding-btn").forEach((btn) => {
+            btn.addEventListener("click", function () {
+                // Remove active class from all buttons
+                document.querySelectorAll(".shareholding-btn").forEach((b) => {
+                    b.classList.remove("btn-secondary");
+                    b.classList.add("btn-outline-secondary");
+                });
+
+                // Add active class to clicked button
+                this.classList.remove("btn-outline-secondary");
+                this.classList.add("btn-secondary");
+
+                // Update shareholding data based on quarter
+                updateShareholdingData(this.getAttribute("data-quarter"));
+            });
+        });
+
+        function updateShareholdingData(quarter) {
+            const shareholdingData = {
+                jun2024: {
+                    "Total Promoter Holding": "38.12%",
+                    "Mutual Funds": "8.95%",
+                    "Other Domestic Institutions": "12.65%",
+                    "Foreign Institutions": "13.45%",
+                    "Retail and Others": "26.83%",
+                },
+                sep2024: {
+                    "Total Promoter Holding": "37.89%",
+                    "Mutual Funds": "9.05%",
+                    "Other Domestic Institutions": "12.75%",
+                    "Foreign Institutions": "13.25%",
+                    "Retail and Others": "27.06%",
+                },
+                dec2024: {
+                    "Total Promoter Holding": "37.95%",
+                    "Mutual Funds": "9.10%",
+                    "Other Domestic Institutions": "12.80%",
+                    "Foreign Institutions": "13.15%",
+                    "Retail and Others": "26.90%",
+                },
+                mar2025: {
+                    "Total Promoter Holding": "37.98%",
+                    "Mutual Funds": "9.15%",
+                    "Other Domestic Institutions": "12.82%",
+                    "Foreign Institutions": "13.30%",
+                    "Retail and Others": "26.76%",
+                },
+            };
+
+            const data = shareholdingData[quarter];
+            const shareholdingContent = document.getElementById(
+                "shareholdingContent",
+            );
+
+            shareholdingContent.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="shareholding-item d-flex justify-content-between align-items-center py-2">
+                            <div class="d-flex align-items-center">
+                                <div class="shareholding-bar bg-primary me-3" style="width: 80px; height: 20px; border-radius: 3px;"></div>
+                                <span>Total Promoter Holding</span>
+                            </div>
+                            <strong>${data["Total Promoter Holding"]}</strong>
+                        </div>
+                        <div class="shareholding-item d-flex justify-content-between align-items-center py-2">
+                            <div class="d-flex align-items-center">
+                                <div class="shareholding-bar bg-info me-3" style="width: 20px; height: 20px; border-radius: 3px;"></div>
+                                <span>Mutual Funds</span>
+                            </div>
+                            <strong>${data["Mutual Funds"]}</strong>
+                        </div>
+                        <div class="shareholding-item d-flex justify-content-between align-items-center py-2">
+                            <div class="d-flex align-items-center">
+                                <div class="shareholding-bar bg-warning me-3" style="width: 25px; height: 20px; border-radius: 3px;"></div>
+                                <span>Other Domestic Institutions</span>
+                            </div>
+                            <strong>${data["Other Domestic Institutions"]}</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="shareholding-item d-flex justify-content-between align-items-center py-2">
+                            <div class="d-flex align-items-center">
+                                <div class="shareholding-bar bg-success me-3" style="width: 30px; height: 20px; border-radius: 3px;"></div>
+                                <span>Foreign Institutions</span>
+                            </div>
+                            <strong>${data["Foreign Institutions"]}</strong>
+                        </div>
+                        <div class="shareholding-item d-flex justify-content-between align-items-center py-2">
+                            <div class="d-flex align-items-center">
+                                <div class="shareholding-bar bg-secondary me-3" style="width: 50px; height: 20px; border-radius: 3px;"></div>
+                                <span>Retail and Others</span>
+                            </div>
+                            <strong>${data["Retail and Others"]}</strong>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    async function fetchSearchSuggestions(query) {
+        try {
+            const response = await fetch(
+                `/api/search_symbols?q=${encodeURIComponent(query)}`,
+            );
+            const suggestions = await response.json();
+            displaySuggestions(suggestions);
+        } catch (error) {
+            console.error("Error fetching suggestions:", error);
+        }
+    }
+
+    function displaySuggestions(suggestions) {
+        const suggestionsDiv = document.getElementById("searchSuggestions");
+
+        if (!suggestions || suggestions.length === 0) {
+            suggestionsDiv.style.display = "none";
+            return;
+        }
+
+        suggestionsDiv.innerHTML = suggestions
+            .map(
+                (item) =>
+                    `<div class="suggestion-item" data-symbol="${item.symbol}">
+            <strong>${item.symbol}</strong> - ${item.name}
+        </div>`,
+            )
+            .join("");
+
+        suggestionsDiv.style.display = "block";
+
+        // Add click listeners to suggestions
+        suggestionsDiv.querySelectorAll(".suggestion-item").forEach((item) => {
+            item.addEventListener("click", function () {
+                const symbol = this.dataset.symbol;
+                document.getElementById("stockSearchInput").value = symbol;
+                suggestionsDiv.style.display = "none";
+                loadStockData(symbol);
+            });
+        });
+    }
+
+    async function loadStockData(symbol) {
+        // Auto-add .NS suffix for Indian stocks if not present
+        currentSymbol = symbol.toUpperCase();
+        if (!currentSymbol.includes(".") && !currentSymbol.endsWith(".NS")) {
+            currentSymbol += ".NS";
+        }
+
+        document.getElementById("stockDataSection").style.display = "block";
+
+        try {
+            // Load basic stock info
+            const response = await fetch(`/api/stock_data/${currentSymbol}`);
+            const stockData = await response.json();
+
+            if (stockData.error) {
+                throw new Error(stockData.error);
+            }
+
+            displayStockInfo(stockData);
+            loadChartData(currentSymbol, currentPeriod);
+        } catch (error) {
+            console.error("Error loading stock data:", error);
+
+            // Show user-friendly error message
+            const chartContainer = document.getElementById("chartContainer");
+            chartContainer.innerHTML = `
+            <div class="chart-loading">
+                <div class="text-center text-danger">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-3"></i><br>
+                    <strong>Stock data not available</strong><br>
+                    <small>Please check the symbol or try another stock</small>
+                </div>
+            </div>
+        `;
+        }
+    }
+
+    function displayStockInfo(data) {
+        document.getElementById("stockName").textContent =
+            data.name || currentSymbol;
+        document.getElementById("stockSymbol").textContent = currentSymbol;
+        document.getElementById("stockPrice").textContent =
+            `₹${data.current_price?.toFixed(2) || "-"}`;
+
+        const change = data.change || 0;
+        const changePct = data.change_percent || 0;
+        const changeElement = document.getElementById("stockChange");
+        changeElement.textContent = `${change >= 0 ? "+" : ""}₹${change.toFixed(2)} (${changePct.toFixed(2)}%)`;
+        changeElement.className = change >= 0 ? "text-success" : "text-danger";
+
+        document.getElementById("marketCap").textContent = formatMarketCap(
+            data.market_cap,
+        );
+        document.getElementById("peRatio").textContent = data.pe_ratio
+            ? data.pe_ratio.toFixed(2)
+            : "-";
+        document.getElementById("yearHigh").textContent = data.year_high
+            ? `₹${data.year_high.toFixed(2)}`
+            : "-";
+        document.getElementById("yearLow").textContent = data.year_low
+            ? `₹${data.year_low.toFixed(2)}`
+            : "-";
+    }
+
+    async function loadChartData(symbol, period) {
+        const chartContainer = document.getElementById("chartContainer");
+        chartContainer.innerHTML = `
+        <div class="chart-loading">
+            <div class="text-center">
+                <div class="spinner-border text-primary me-3" role="status"></div>
+                Loading ${period.toUpperCase()} chart data...
+            </div>
+        </div>
+    `;
+
+        try {
+            const response = await fetch(
+                `/api/stock_chart/${symbol}?period=${period}`,
+            );
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            chartData[period] = data;
+            createProfessionalChart(data);
+        } catch (error) {
+            console.error("Error loading chart data:", error);
+            chartContainer.innerHTML = `
+            <div class="chart-loading">
+                <div class="text-center text-danger">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-3"></i><br>
+                    Error loading chart data. Please try again.
+                </div>
+            </div>
+        `;
+        }
+    }
+
+    function createProfessionalChart(data) {
+        if (currentChart) {
+            currentChart.destroy();
+        }
+
+        const chartContainer = document.getElementById("chartContainer");
+        chartContainer.innerHTML = `
+            <div id="apexChart" style="margin-bottom: 10px;"></div>
+            <div id="volumeChart" style="height: 150px;" ${document.getElementById("showVolume").getAttribute("data-toggle") === "false" ? 'class="d-none"' : ""}></div>
+        `;
+
+        // Filter and clean data to prevent gaps
+        const validData = data.filter((item) => {
+            const timestamp = item.time * 1000;
+            const isValidTimestamp =
+                timestamp && !isNaN(timestamp) && timestamp > 946684800000; // After Jan 1, 2000
+            const hasValidPrices =
+                item.open > 0 &&
+                item.high > 0 &&
+                item.low > 0 &&
+                item.close > 0;
+            const hasValidVolume = item.volume != null && item.volume >= 0;
+            return isValidTimestamp && hasValidPrices && hasValidVolume;
+        });
+
+        // Create categories for x-axis labels FIRST
+        const categories = validData.map((item) => {
+            const date = new Date(item.time * 1000);
+            if (currentPeriod === "1d") {
+                return date.toLocaleTimeString("en-IN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                });
+            } else if (currentPeriod === "5d") {
+                return date.toLocaleDateString("en-IN", {
+                    month: "short",
+                    day: "numeric",
+                });
+            } else {
+                return date.toLocaleDateString("en-IN", {
+                    month: "short",
+                    day: "numeric",
+                });
+            }
+        });
+
+        // Use category-based data to ensure continuous display without gaps
+        const ohlcData = validData.map((item, index) => {
+            return {
+                x: new Date(item.time * 1000),  // Use actual timestamp
+                y: [item.open, item.high, item.low, item.close],
+            };
+        });
+
+        const volumeData = validData.map((item, index) => {
+            return {
+                x: index, // Use index instead of timestamp
+                y: item.volume || 0,
+            };
+        });
+
+        let chartSeries = [];
+
+        // Main price series
+        if (currentChartType === "candlestick") {
+            chartSeries.push({
+                name: "Price",
+                type: "candlestick",
+                data: ohlcData,
+            });
+        } else if (currentChartType === "line") {
+            chartSeries.push({
+                name: "Close Price",
+                type: "line",
+                data: data.map((item) => ({
+                    x: new Date(item.time * 1000),
+                    y: item.close,
+                })),
+            });
+        } else if (currentChartType === "area") {
+            chartSeries.push({
+                name: "Close Price",
+                type: "area",
+                data: data.map((item) => ({
+                    x: new Date(item.time * 1000),
+                    y: item.close,
+                })),
+            });
+        }
+
+        // Note: EMA/SMA indicators removed as per user request
+        // Volume is now handled separately in its own chart below
+
+        // Create chart options AFTER categories are defined
+        const options = {
+            series: chartSeries,
+            chart: {
+                type: "candlestick",
+                height: 650,
+                toolbar: {
+                    show: true,
+                    tools: {
+                        download: true,
+                        selection: true,
+                        zoom: true,
+                        zoomin: true,
+                        zoomout: true,
+                        pan: true,
+                        reset: true,
+                    },
+                },
+                zoom: {
+                    enabled: true,
+                    type: "x",
+                },
+                background: "transparent",
+            },
+            title: {
+                text: `${currentSymbol} - ${currentPeriod.toUpperCase()}`,
+                align: "left",
+            },
+            xaxis: {
+                type: "category",
+                categories: categories,
+                labels: {
+                    show: true,
+                    datetimeUTC: false,
+                    style: {
+                        colors: document.body.classList.contains("dark-mode")
+                            ? "#a0aec0"
+                            : "#4a5568",
+                        fontSize: "11px",
+                        fontFamily:
+                            "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                        fontWeight: 400,
+                    },
+
+                    rotate: -45,
+                    hideOverlappingLabels: true,
+                    showDuplicates: false,
+                    trim: true,
+                },
+                tickAmount: 8,
+                axisBorder: {
+                    show: true,
+                    color: document.body.classList.contains("dark-mode")
+                        ? "#2d3748"
+                        : "#e2e8f0",
+                    height: 1,
+                },
+                axisTicks: {
+                    show: true,
+                    color: document.body.classList.contains("dark-mode")
+                        ? "#2d3748"
+                        : "#e2e8f0",
+                    height: 4,
+                },
+                crosshairs: {
+                    show: true,
+                    width: 1,
+                    position: "back",
+                    opacity: 0.9,
+                    stroke: {
+                        color: document.body.classList.contains("dark-mode")
+                            ? "#4fd1c7"
+                            : "#3182ce",
+                        width: 1,
+                        dashArray: 0,
+                    },
+                },
+            },
+            yaxis: [
+                {
+                    title: {
+                        text: "Price (₹)",
+                        style: {
+                            color: document.body.classList.contains("dark-mode")
+                                ? "#a0aec0"
+                                : "#4a5568",
+                            fontSize: "11px",
+                            fontFamily:
+                                "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                        },
+                    },
+                    labels: {
+                        style: {
+                            colors: document.body.classList.contains(
+                                "dark-mode",
+                            )
+                                ? "#a0aec0"
+                                : "#4a5568",
+                            fontSize: "11px",
+                            fontFamily:
+                                "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                        },
+                        formatter: function (val) {
+                            if (val >= 10000000) {
+                                return "₹" + (val / 10000000).toFixed(1) + "Cr";
+                            } else if (val >= 100000) {
+                                return "₹" + (val / 100000).toFixed(1) + "L";
+                            } else if (val >= 1000) {
+                                return "₹" + (val / 1000).toFixed(1) + "K";
+                            }
+                            return "₹" + val.toFixed(2);
+                        },
+                    },
+                    axisBorder: {
+                        show: true,
+                        color: document.body.classList.contains("dark-mode")
+                            ? "#2d3748"
+                            : "#e2e8f0",
+                    },
+                    axisTicks: {
+                        show: true,
+                        color: document.body.classList.contains("dark-mode")
+                            ? "#2d3748"
+                            : "#e2e8f0",
+                    },
+                    crosshairs: {
+                        show: true,
+                        width: 1,
+                        position: "back",
+                        opacity: 0.9,
+                        stroke: {
+                            color: document.body.classList.contains("dark-mode")
+                                ? "#4fd1c7"
+                                : "#3182ce",
+                            width: 1,
+                            dashArray: 0,
+                        },
+                    },
+                },
+                {
+                    opposite: true,
+                    title: {
+                        text: "Volume",
+                        style: {
+                            color: document.body.classList.contains("dark-mode")
+                                ? "#a0aec0"
+                                : "#4a5568",
+                            fontSize: "11px",
+                            fontFamily:
+                                "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                        },
+                    },
+                    labels: {
+                        style: {
+                            colors: document.body.classList.contains(
+                                "dark-mode",
+                            )
+                                ? "#a0aec0"
+                                : "#4a5568",
+                            fontSize: "10px",
+                            fontFamily:
+                                "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                        },
+                        formatter: function (val) {
+                            return formatVolume(val);
+                        },
+                    },
+                    axisBorder: {
+                        show: true,
+                        color: document.body.classList.contains("dark-mode")
+                            ? "#2d3748"
+                            : "#e2e8f0",
+                    },
+                },
+            ],
+            tooltip: {
+                enabled: true,
+                shared: true,
+                followCursor: true,
+                intersect: false,
+                inverseOrder: false,
+                fillSeriesColor: false,
+                theme: document.body.classList.contains("dark-mode")
+                    ? "dark"
+                    : "light",
+                style: {
+                    fontSize: "12px",
+                    fontFamily:
+                        "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                },
+                custom: function ({ seriesIndex, dataPointIndex, w }) {
+                    const data =
+                        w.globals.initialSeries[seriesIndex].data[
+                            dataPointIndex
+                        ];
+                    if (
+                        currentChartType === "candlestick" &&
+                        data &&
+                        data.y &&
+                        Array.isArray(data.y) &&
+                        data.y.length === 4
+                    ) {
+                        const isDark =
+                            document.body.classList.contains("dark-mode");
+                        const bgColor = isDark ? "#2d3748" : "#ffffff";
+                        const textColor = isDark ? "#e2e8f0" : "#2d3748";
+                        const borderColor = isDark ? "#4a5568" : "#e2e8f0";
+
+                        // Safe value extraction with null checks
+                        const open =
+                            data.y[0] != null ? data.y[0].toFixed(2) : "N/A";
+                        const high =
+                            data.y[1] != null ? data.y[1].toFixed(2) : "N/A";
+                        const low =
+                            data.y[2] != null ? data.y[2].toFixed(2) : "N/A";
+                        const close =
+                            data.y[3] != null ? data.y[3].toFixed(2) : "N/A";
+
+                        let dateStr = "";
+                        if (data?.x !== undefined && data?.x !== null) {
+                            const parsedDate = new Date(data.x);
+                            if (!isNaN(parsedDate.getTime())) {
+                                dateStr = parsedDate.toLocaleDateString("en-IN", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                });
+                            }
+                        }
+
+                        return `
+                            <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 8px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 200px;">
+                                <div style="color: ${textColor}; font-weight: 700; margin-bottom: 12px; font-size: 14px; text-align: center;">
+                                    ${dateStr}
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                                    <div style="color: ${textColor};">
+                                        <span style="color: #9ca3af;">OPEN</span><br>
+                                        <span style="font-weight: 600; font-size: 15px;">₹${open}</span>
+                                    </div>
+                                    <div style="color: ${textColor};">
+                                        <span style="color: #9ca3af;">HIGH</span><br>
+                                        <span style="font-weight: 600; color: #10b981; font-size: 15px;">₹${high}</span>
+                                    </div>
+                                    <div style="color: ${textColor};">
+                                        <span style="color: #9ca3af;">LOW</span><br>
+                                        <span style="font-weight: 600; color: #ef4444; font-size: 15px;">₹${low}</span>
+                                    </div>
+                                    <div style="color: ${textColor};">
+                                        <span style="color: #9ca3af;">CLOSE</span><br>
+                                        <span style="font-weight: 600; font-size: 15px;">₹${close}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    return false;
+                },
+            },
+            plotOptions: {
+                candlestick: {
+                    colors: {
+                        upward: "#10b981", // Kite green
+                        downward: "#ef4444", // Kite red
+                    },
+                    wick: {
+                        useFillColor: true,
+                    },
+                },
+                bar: {
+                    columnWidth: "80%",
+                },
+            },
+            grid: {
+                show: true,
+                borderColor: document.body.classList.contains("dark-mode")
+                    ? "#374151"
+                    : "#f3f4f6",
+                strokeDashArray: 1,
+                position: "back",
+                xaxis: {
+                    lines: {
+                        show: true,
+                    },
+                },
+                yaxis: {
+                    lines: {
+                        show: true,
+                    },
+                },
+                row: {
+                    colors: undefined,
+                    opacity: 0.5,
+                },
+                column: {
+                    colors: undefined,
+                    opacity: 0.5,
+                },
+                padding: {
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    left: 0,
+                },
+            },
+            legend: {
+                show: true,
+                position: "top",
+            },
+        };
+
+        currentChart = new ApexCharts(
+            document.querySelector("#apexChart"),
+            options,
+        );
+        currentChart.render();
+
+        // Show key metrics and shareholding sections when stock is loaded
+        document.getElementById("keyMetricsSection").style.display = "block";
+        document.getElementById("shareholdingSection").style.display = "block";
+
+        // Create volume chart if enabled
+        if (
+            document
+                .getElementById("showVolume")
+                .getAttribute("data-toggle") === "true"
+        ) {
+            const volumeOptions = {
+                series: [
+                    {
+                        name: "Volume",
+                        data: volumeData,
+                    },
+                ],
+                chart: {
+                    height: 150,
+                    type: "bar",
+                    toolbar: { show: false },
+                    background: document.body.classList.contains("dark-mode")
+                        ? "#1a202c"
+                        : "#ffffff",
+                    fontFamily:
+                        "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                    animations: { enabled: false },
+                },
+                plotOptions: {
+                    bar: {
+                        columnWidth: "80%",
+                        colors: {
+                            ranges: volumeData.map((item, index) => {
+                                const priceChange =
+                                    index > 0
+                                        ? data[index].close -
+                                          data[index - 1].close
+                                        : 0;
+                                return {
+                                    from: item.y,
+                                    to: item.y,
+                                    color:
+                                        priceChange >= 0
+                                            ? "#00C853"
+                                            : "#FF1744",
+                                };
+                            }),
+                        },
+                    },
+                },
+                dataLabels: { enabled: false },
+                xaxis: {
+                    type: "category",
+                    categories: categories,
+                    labels: { show: false },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
+                },
+                yaxis: {
+                    title: {
+                        text: "Volume",
+                        style: {
+                            color: document.body.classList.contains("dark-mode")
+                                ? "#a0aec0"
+                                : "#4a5568",
+                            fontSize: "11px",
+                        },
+                    },
+                    labels: {
+                        style: {
+                            colors: document.body.classList.contains(
+                                "dark-mode",
+                            )
+                                ? "#a0aec0"
+                                : "#4a5568",
+                            fontSize: "11px",
+                        },
+                        formatter: function (val) {
+                            return formatVolume(val);
+                        },
+                    },
+                },
+                grid: {
+                    show: true,
+                    borderColor: document.body.classList.contains("dark-mode")
+                        ? "#2d3748"
+                        : "#e2e8f0",
+                    strokeDashArray: 1,
+                },
+                tooltip: {
+                    theme: document.body.classList.contains("dark-mode")
+                        ? "dark"
+                        : "light",
+                    x: {
+                        formatter: function (val, opts) {
+                            // Use category label directly since we're using category-based data
+                            return categories[opts.dataPointIndex] || val;
+                        },
+                    },
+                    y: {
+                        formatter: function (val) {
+                            return formatVolume(val);
+                        },
+                    },
+                },
+            };
+
+            const volumeChart = new ApexCharts(
+                document.getElementById("volumeChart"),
+                volumeOptions,
+            );
+            volumeChart.render();
+        }
+    }
+
+    // Technical indicator calculations
+    function calculateSMA(data, period) {
+        const sma = [];
+        for (let i = 0; i < data.length; i++) {
+            if (i < period - 1) {
+                sma.push(null);
+            } else {
+                const sum = data
+                    .slice(i - period + 1, i + 1)
+                    .reduce((a, b) => a + b, 0);
+                sma.push(sum / period);
+            }
+        }
+        return sma;
+    }
+
+    function calculateEMA(data, period) {
+        const ema = [];
+        const multiplier = 2 / (period + 1);
+
+        for (let i = 0; i < data.length; i++) {
+            if (i === 0) {
+                ema.push(data[i]);
+            } else {
+                ema.push(data[i] * multiplier + ema[i - 1] * (1 - multiplier));
+            }
+        }
+        return ema;
+    }
+
+    // Utility functions
+    function formatMarketCap(value) {
+        if (!value) return "-";
+        if (value >= 1e12) return `₹${(value / 1e12).toFixed(2)}T`;
+        if (value >= 1e9) return `₹${(value / 1e9).toFixed(2)}B`;
+        if (value >= 1e6) return `₹${(value / 1e6).toFixed(2)}M`;
+        if (value >= 1e3) return `₹${(value / 1e3).toFixed(2)}K`;
+        return `₹${value.toFixed(2)}`;
+    }
+
+    function formatVolume(value) {
+        if (!value) return "0";
+        if (value >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
+        if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
+        if (value >= 1e3) return `${(value / 1e3).toFixed(1)}K`;
+        return value.toString();
+    }
+
+    // Hide suggestions when clicking outside
+    document.addEventListener("click", function (e) {
+        if (!e.target.closest(".stock-search-container")) {
+            document.getElementById("searchSuggestions").style.display = "none";
+        }
+    });
+</script>
+{% endblock %}
